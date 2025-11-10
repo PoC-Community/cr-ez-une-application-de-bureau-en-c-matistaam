@@ -16,8 +16,11 @@ public partial class MainWindow : Window
     private ObservableCollection<TaskItem> _filteredTasks = new();
     private const string DataFolder = "data";
     private const string DataFile = "data/tasks.json";
+    private const string BackupFile = "data/tasks.backup.json";
     private string? _currentFilter = null;
     private string? _currentDateFilter = null;
+    private System.Threading.Timer? _autoSaveTimer;
+    private bool _hasUnsavedChanges = false;
 
     public MainWindow()
     {
@@ -35,8 +38,31 @@ public partial class MainWindow : Window
         CompleteAllButton.Click += OnCompleteAllClick;
         ClearCompletedButton.Click += OnClearCompletedClick;
 
+        // Set up auto-save timer (saves every 5 seconds if there are changes)
+        _autoSaveTimer = new System.Threading.Timer(
+            AutoSaveCallback,
+            null,
+            TimeSpan.FromSeconds(5),
+            TimeSpan.FromSeconds(5)
+        );
+
+        // Handle window closing to save and cleanup
+        this.Closing += OnWindowClosing;
+
         // Load tasks on startup
         LoadTasks();
+    }
+
+    private void OnWindowClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        // Save on close if there are unsaved changes
+        if (_hasUnsavedChanges)
+        {
+            SaveTasks();
+        }
+
+        // Clean up timer
+        _autoSaveTimer?.Dispose();
     }
 
     private void OnAddClick(object? sender, RoutedEventArgs e)
@@ -53,6 +79,10 @@ public partial class MainWindow : Window
             TaskInput.Text = string.Empty;
             TagsInput.Text = string.Empty;
             DueDatePicker.SelectedDate = null;
+            
+            // Mark as having unsaved changes
+            _hasUnsavedChanges = true;
+            UpdateSaveStatus("unsaved");
             
             // Refresh filtered view
             ApplyFilter();
@@ -97,6 +127,8 @@ public partial class MainWindow : Window
         {
             task.IsCompleted = true;
         }
+        _hasUnsavedChanges = true;
+        UpdateSaveStatus("unsaved");
         // Refresh the view to show updated checkboxes
         ApplyFilter();
     }
@@ -109,6 +141,8 @@ public partial class MainWindow : Window
         {
             _tasks.Remove(task);
         }
+        _hasUnsavedChanges = true;
+        UpdateSaveStatus("unsaved");
         ApplyFilter();
     }
 
@@ -155,6 +189,8 @@ public partial class MainWindow : Window
             if (textBox.DataContext is TaskItem task && !string.IsNullOrWhiteSpace(textBox.Text))
             {
                 task.Title = textBox.Text;
+                _hasUnsavedChanges = true;
+                UpdateSaveStatus("unsaved");
             }
 
             // Switch back to TextBlock
@@ -233,18 +269,49 @@ public partial class MainWindow : Window
         if (TaskList.SelectedItem is TaskItem selected)
         {
             _tasks.Remove(selected);
+            _hasUnsavedChanges = true;
+            UpdateSaveStatus("unsaved");
             ApplyFilter();
         }
     }
 
     private void OnSaveClick(object? sender, RoutedEventArgs e)
     {
+        SaveTasks();
+    }
+
+    private void AutoSaveCallback(object? state)
+    {
+        if (_hasUnsavedChanges)
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() => SaveTasks());
+        }
+    }
+
+    private void SaveTasks()
+    {
         try
         {
+            // Update status indicator - saving
+            UpdateSaveStatus("saving");
+
             // Create the data folder if it doesn't exist
             if (!Directory.Exists(DataFolder))
             {
                 Directory.CreateDirectory(DataFolder);
+            }
+
+            // Create a backup of the existing file before overwriting
+            if (File.Exists(DataFile))
+            {
+                try
+                {
+                    File.Copy(DataFile, BackupFile, true);
+                }
+                catch (Exception backupEx)
+                {
+                    System.Console.WriteLine($"Warning: Could not create backup: {backupEx.Message}");
+                }
             }
 
             // Serialize the tasks to JSON
@@ -254,18 +321,59 @@ public partial class MainWindow : Window
             // Write to file
             File.WriteAllText(DataFile, json);
 
-            // Optional: Show a success message (you can add a TextBlock in the UI for this)
-            System.Console.WriteLine("Tasks saved successfully!");
+            _hasUnsavedChanges = false;
+            System.Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Tasks saved successfully (auto-save)");
+            
+            // Update status indicator - saved
+            UpdateSaveStatus("saved");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            System.Console.WriteLine("Error: Permission denied. Please check file permissions.");
+            UpdateSaveStatus("error");
+        }
+        catch (IOException ex)
+        {
+            System.Console.WriteLine($"Error: Disk I/O error - {ex.Message}");
+            UpdateSaveStatus("error");
         }
         catch (Exception ex)
         {
-            // Handle errors
             System.Console.WriteLine($"Error saving tasks: {ex.Message}");
+            UpdateSaveStatus("error");
         }
+    }
+
+    private void UpdateSaveStatus(string status)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            switch (status)
+            {
+                case "saved":
+                    SaveStatusText.Foreground = Avalonia.Media.Brushes.Green;
+                    Avalonia.Controls.ToolTip.SetTip(SaveStatusText, "All changes saved");
+                    break;
+                case "saving":
+                    SaveStatusText.Foreground = Avalonia.Media.Brushes.Orange;
+                    Avalonia.Controls.ToolTip.SetTip(SaveStatusText, "Saving...");
+                    break;
+                case "error":
+                    SaveStatusText.Foreground = Avalonia.Media.Brushes.Red;
+                    Avalonia.Controls.ToolTip.SetTip(SaveStatusText, "Error saving - check console");
+                    break;
+                case "unsaved":
+                    SaveStatusText.Foreground = Avalonia.Media.Brushes.Yellow;
+                    Avalonia.Controls.ToolTip.SetTip(SaveStatusText, "Unsaved changes");
+                    break;
+            }
+        });
     }
 
     private void LoadTasks()
     {
+        bool loadedSuccessfully = false;
+
         try
         {
             // Check if the file exists
@@ -273,6 +381,12 @@ public partial class MainWindow : Window
             {
                 // Read the JSON file
                 var json = File.ReadAllText(DataFile);
+
+                // Validate JSON is not empty
+                if (string.IsNullOrWhiteSpace(json))
+                {
+                    throw new JsonException("JSON file is empty");
+                }
 
                 // Deserialize the JSON into a list of TaskItem
                 var tasks = JsonSerializer.Deserialize<List<TaskItem>>(json);
@@ -285,32 +399,89 @@ public partial class MainWindow : Window
                     {
                         _tasks.Add(task);
                     }
+                    loadedSuccessfully = true;
                 }
 
-                System.Console.WriteLine("Tasks loaded successfully!");
+                System.Console.WriteLine($"✓ Tasks loaded successfully! ({tasks?.Count ?? 0} tasks)");
             }
             else
             {
                 // File doesn't exist, start with an empty list
                 System.Console.WriteLine("No saved tasks found. Starting with an empty list.");
+                loadedSuccessfully = true; // Not an error
             }
         }
         catch (JsonException ex)
         {
-            // Handle invalid JSON
-            System.Console.WriteLine($"Error parsing JSON file: {ex.Message}");
-            System.Console.WriteLine("Starting with an empty task list.");
+            // Handle invalid JSON - try to recover from backup
+            System.Console.WriteLine($"⚠ Error parsing JSON file: {ex.Message}");
+            
+            if (TryLoadBackup())
+            {
+                System.Console.WriteLine("✓ Successfully recovered from backup file.");
+                loadedSuccessfully = true;
+            }
+            else
+            {
+                System.Console.WriteLine("⚠ Starting with an empty task list.");
+            }
+        }
+        catch (UnauthorizedAccessException)
+        {
+            System.Console.WriteLine("✗ Error: Permission denied. Cannot read tasks file.");
         }
         catch (Exception ex)
         {
             // Handle other errors (permissions, etc.)
-            System.Console.WriteLine($"Error loading tasks: {ex.Message}");
-            System.Console.WriteLine("Starting with an empty task list.");
+            System.Console.WriteLine($"✗ Error loading tasks: {ex.Message}");
+            
+            if (TryLoadBackup())
+            {
+                System.Console.WriteLine("✓ Successfully recovered from backup file.");
+                loadedSuccessfully = true;
+            }
+            else
+            {
+                System.Console.WriteLine("⚠ Starting with an empty task list.");
+            }
         }
         finally
         {
             // Always refresh the filtered view after loading
             ApplyFilter();
+            
+            if (!loadedSuccessfully && _tasks.Count == 0)
+            {
+                System.Console.WriteLine("ℹ You can start adding tasks now.");
+            }
         }
+    }
+
+    private bool TryLoadBackup()
+    {
+        try
+        {
+            if (File.Exists(BackupFile))
+            {
+                var json = File.ReadAllText(BackupFile);
+                var tasks = JsonSerializer.Deserialize<List<TaskItem>>(json);
+                
+                if (tasks != null)
+                {
+                    _tasks.Clear();
+                    foreach (var task in tasks)
+                    {
+                        _tasks.Add(task);
+                    }
+                    return true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Console.WriteLine($"Could not load backup: {ex.Message}");
+        }
+        
+        return false;
     }
 }
