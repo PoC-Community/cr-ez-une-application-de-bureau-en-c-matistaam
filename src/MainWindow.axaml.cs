@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using TodoListApp.Models;
 
@@ -12,17 +13,25 @@ namespace TodoListApp;
 public partial class MainWindow : Window
 {
     private ObservableCollection<TaskItem> _tasks = new();
+    private ObservableCollection<TaskItem> _filteredTasks = new();
     private const string DataFolder = "data";
     private const string DataFile = "data/tasks.json";
+    private string? _currentFilter = null;
+    private string? _currentDateFilter = null;
 
     public MainWindow()
     {
         InitializeComponent();
-        TaskList.ItemsSource = _tasks;
+        TaskList.ItemsSource = _filteredTasks;
 
         AddButton.Click += OnAddClick;
         DeleteButton.Click += OnDeleteClick;
         SaveButton.Click += OnSaveClick;
+        FilterButton.Click += OnFilterClick;
+        ClearFilterButton.Click += OnClearFilterClick;
+        FilterTodayButton.Click += OnFilterTodayClick;
+        FilterWeekButton.Click += OnFilterWeekClick;
+        FilterOverdueButton.Click += OnFilterOverdueClick;
 
         // Load tasks on startup
         LoadTasks();
@@ -32,8 +41,89 @@ public partial class MainWindow : Window
     {
         if (!string.IsNullOrWhiteSpace(TaskInput.Text))
         {
-            _tasks.Add(new TaskItem { Title = TaskInput.Text });
+            var newTask = new TaskItem 
+            { 
+                Title = TaskInput.Text,
+                Tags = TagsInput.Text ?? string.Empty,
+                DueDate = DueDatePicker.SelectedDate?.DateTime
+            };
+            _tasks.Add(newTask);
             TaskInput.Text = string.Empty;
+            TagsInput.Text = string.Empty;
+            DueDatePicker.SelectedDate = null;
+            
+            // Refresh filtered view
+            ApplyFilter();
+        }
+    }
+
+    private void OnFilterClick(object? sender, RoutedEventArgs e)
+    {
+        _currentFilter = FilterTagInput.Text?.Trim();
+        ApplyFilter();
+    }
+
+    private void OnClearFilterClick(object? sender, RoutedEventArgs e)
+    {
+        _currentFilter = null;
+        _currentDateFilter = null;
+        FilterTagInput.Text = string.Empty;
+        ApplyFilter();
+    }
+
+    private void OnFilterTodayClick(object? sender, RoutedEventArgs e)
+    {
+        _currentDateFilter = "today";
+        ApplyFilter();
+    }
+
+    private void OnFilterWeekClick(object? sender, RoutedEventArgs e)
+    {
+        _currentDateFilter = "week";
+        ApplyFilter();
+    }
+
+    private void OnFilterOverdueClick(object? sender, RoutedEventArgs e)
+    {
+        _currentDateFilter = "overdue";
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        _filteredTasks.Clear();
+
+        foreach (var task in _tasks)
+        {
+            bool matchesTagFilter = true;
+            bool matchesDateFilter = true;
+
+            // Apply tag filter
+            if (!string.IsNullOrWhiteSpace(_currentFilter))
+            {
+                var filterTag = _currentFilter.ToLower();
+                var taskTags = task.GetTagsList().Select(t => t.ToLower());
+                matchesTagFilter = taskTags.Any(tag => tag.Contains(filterTag));
+            }
+
+            // Apply date filter
+            if (!string.IsNullOrWhiteSpace(_currentDateFilter))
+            {
+                matchesDateFilter = _currentDateFilter switch
+                {
+                    "today" => task.DueDate.HasValue && task.DueDate.Value.Date == DateTime.Now.Date,
+                    "week" => task.DueDate.HasValue && task.DueDate.Value.Date >= DateTime.Now.Date && 
+                              task.DueDate.Value.Date <= DateTime.Now.AddDays(7).Date,
+                    "overdue" => task.IsOverdue,
+                    _ => true
+                };
+            }
+
+            // Add task if it matches all active filters
+            if (matchesTagFilter && matchesDateFilter)
+            {
+                _filteredTasks.Add(task);
+            }
         }
     }
 
@@ -42,6 +132,7 @@ public partial class MainWindow : Window
         if (TaskList.SelectedItem is TaskItem selected)
         {
             _tasks.Remove(selected);
+            ApplyFilter();
         }
     }
 
@@ -114,6 +205,11 @@ public partial class MainWindow : Window
             // Handle other errors (permissions, etc.)
             System.Console.WriteLine($"Error loading tasks: {ex.Message}");
             System.Console.WriteLine("Starting with an empty task list.");
+        }
+        finally
+        {
+            // Always refresh the filtered view after loading
+            ApplyFilter();
         }
     }
 }

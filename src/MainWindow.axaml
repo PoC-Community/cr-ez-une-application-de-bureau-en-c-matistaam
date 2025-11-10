@@ -3,29 +3,91 @@
         xmlns:models="clr-namespace:TodoListApp.Models"
         x:Class="TodoListApp.MainWindow"
         Title="To-Do List"
-        Width="400" Height="500">
+        Width="500" Height="600">
 
     <StackPanel Margin="20">
         <TextBlock Text="My To-Do List" FontSize="24" HorizontalAlignment="Center" Margin="0,0,0,10"/>
 
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-            <TextBox x:Name="TaskInput" Width="250" Watermark="Enter a task..."/>
-            <Button x:Name="AddButton" Content="Add" Margin="10,0,0,0" Width="80"/>
-        </StackPanel>
+        <!-- Add Task Section -->
+        <Border BorderBrush="LightGray" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,0,0,10">
+            <StackPanel>
+                <TextBox x:Name="TaskInput" Watermark="Enter a task..." Margin="0,0,0,5"/>
+                <TextBox x:Name="TagsInput" Watermark="Tags (comma-separated, e.g., work, urgent)" Margin="0,0,0,5"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                    <TextBlock Text="Due Date:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <DatePicker x:Name="DueDatePicker"/>
+                </StackPanel>
+                <Button x:Name="AddButton" Content="Add Task" HorizontalAlignment="Right" Width="100"/>
+            </StackPanel>
+        </Border>
 
+        <!-- Filter Section -->
+        <Border BorderBrush="LightGray" BorderThickness="1" CornerRadius="5" Padding="10" Margin="0,0,0,10">
+            <StackPanel>
+                <TextBlock Text="Filters:" FontWeight="Bold" Margin="0,0,0,5"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                    <TextBox x:Name="FilterTagInput" Width="150" Watermark="Filter by tag..." Margin="0,0,5,0"/>
+                    <Button x:Name="FilterButton" Content="Apply" Width="70" Margin="0,0,5,0"/>
+                    <Button x:Name="ClearFilterButton" Content="Clear All" Width="80"/>
+                </StackPanel>
+                <WrapPanel>
+                    <Button x:Name="FilterTodayButton" Content="📅 Today" Margin="0,0,5,5" Padding="8,4"/>
+                    <Button x:Name="FilterWeekButton" Content="📆 This Week" Margin="0,0,5,5" Padding="8,4"/>
+                    <Button x:Name="FilterOverdueButton" Content="⚠️ Overdue" Margin="0,0,5,5" Padding="8,4"/>
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+
+        <!-- Task List -->
         <ListBox x:Name="TaskList" Height="300" SelectionMode="Single">
             <ListBox.ItemTemplate>
                 <DataTemplate DataType="models:TaskItem">
-                    <StackPanel Orientation="Horizontal" Background="Transparent">
-                        <CheckBox IsChecked="{Binding IsCompleted}" Margin="0,0,10,0"/>
-                        <TextBlock Text="{Binding Title}" VerticalAlignment="Center"/>
-                    </StackPanel>
+                    <Border BorderBrush="LightGray" BorderThickness="2" CornerRadius="3" Padding="5" Margin="2">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <CheckBox IsChecked="{Binding IsCompleted}" Margin="0,0,10,0"/>
+                                <TextBlock Text="{Binding Title}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                <TextBlock Text=" ⚠️" 
+                                           VerticalAlignment="Center" 
+                                           Margin="5,0,0,0"
+                                           Foreground="#FF5252"
+                                           IsVisible="{Binding IsOverdue}"/>
+                            </StackPanel>
+                            <!-- Display due date -->
+                            <TextBlock Text="{Binding DueDateDisplay}" 
+                                       Margin="25,3,0,0" 
+                                       FontSize="11"
+                                       Foreground="#666666"
+                                       IsVisible="{Binding DueDate, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                            <!-- Display tags as chips -->
+                            <ItemsControl ItemsSource="{Binding TagsList}" Margin="25,5,0,0">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#E3F2FD" 
+                                                CornerRadius="10" 
+                                                Padding="8,3" 
+                                                Margin="0,0,5,5">
+                                            <TextBlock Text="{Binding}" 
+                                                       FontSize="11" 
+                                                       Foreground="#1976D2"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>
 
+        <!-- Action Buttons -->
         <StackPanel Orientation="Horizontal" Margin="0,10,0,0" HorizontalAlignment="Center">
-            <Button x:Name="DeleteButton" Content="Delete selected" Width="120"/>
+            <Button x:Name="DeleteButton" Content="Delete Selected" Width="120"/>
             <Button x:Name="SaveButton" Content="Save to JSON" Width="120" Margin="10,0,0,0"/>
         </StackPanel>
     </StackPanel>
