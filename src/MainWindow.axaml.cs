@@ -146,6 +146,14 @@ public partial class MainWindow : Window
         ApplyFilter();
     }
 
+    private void OnCheckBoxClick(object? sender, RoutedEventArgs e)
+    {
+        // Mark as having unsaved changes and update progress
+        _hasUnsavedChanges = true;
+        UpdateSaveStatus("unsaved");
+        UpdateStatsAndProgress();
+    }
+
     private void OnTaskTitleDoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
     {
         if (sender is TextBlock textBlock && textBlock.Parent is StackPanel panel)
@@ -262,6 +270,80 @@ public partial class MainWindow : Window
                 _filteredTasks.Add(task);
             }
         }
+        
+        // Update stats and progress
+        UpdateStatsAndProgress();
+    }
+
+    private void UpdateStatsAndProgress()
+    {
+        var totalTasks = _tasks.Count;
+        var completedTasks = _tasks.Count(t => t.IsCompleted);
+        var percentage = totalTasks > 0 ? (completedTasks * 100.0 / totalTasks) : 0;
+
+        // Update task stats
+        TaskStatsText.Text = $"{totalTasks} {(totalTasks == 1 ? "task" : "tasks")} • {completedTasks} done";
+
+        // Update progress bar with animation
+        var targetWidth = percentage * 5.0; // Max width 500px (5.0 * 100)
+        System.Console.WriteLine($"Progress: {percentage:F1}% -> Width: {targetWidth}px");
+        
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            ProgressBar.Width = targetWidth;
+        });
+        
+        ProgressText.Text = $"{percentage:F0}% Complete {GetProgressEmoji(percentage)}";
+
+        // Update motivation text
+        MotivationText.Text = GetMotivationalMessage(percentage, completedTasks);
+    }
+
+    private string GetProgressEmoji(double percentage)
+    {
+        return percentage switch
+        {
+            100 => "🎉",
+            >= 75 => "🔥",
+            >= 50 => "💪",
+            >= 25 => "🎯",
+            _ => "🚀"
+        };
+    }
+
+    private string GetMotivationalMessage(double percentage, int completed)
+    {
+        if (percentage == 100 && completed > 0)
+        {
+            var messages = new[]
+            {
+                "🎉 LEGENDARY! All tasks crushed! You're unstoppable!",
+                "⭐ AMAZING! 100% Complete! Time to celebrate! 🎊",
+                "🏆 CHAMPION! All quests completed! You're a hero! 💎",
+                "🌟 PERFECT! Everything done! You're on fire! 🔥"
+            };
+            return messages[new Random().Next(messages.Length)];
+        }
+        else if (percentage >= 75)
+        {
+            return "🔥 Almost there! You're crushing it! Keep going!";
+        }
+        else if (percentage >= 50)
+        {
+            return "💪 Great progress! You're halfway to glory!";
+        }
+        else if (percentage >= 25)
+        {
+            return "🎯 Nice start! Keep the momentum going!";
+        }
+        else if (completed > 0)
+        {
+            return "🚀 Good job! Every quest counts! Keep it up!";
+        }
+        else
+        {
+            return "✨ Ready to conquer? Let's make it happen! 💎";
+        }
     }
 
     private void OnDeleteClick(object? sender, RoutedEventArgs e)
@@ -351,20 +433,24 @@ public partial class MainWindow : Window
             switch (status)
             {
                 case "saved":
-                    SaveStatusText.Foreground = Avalonia.Media.Brushes.Green;
-                    Avalonia.Controls.ToolTip.SetTip(SaveStatusText, "All changes saved");
+                    SaveStatusText.Text = "💾 Saved";
+                    SaveStatusText.Opacity = 0.9;
+                    Avalonia.Controls.ToolTip.SetTip(SaveStatusText, "All changes saved ✓");
                     break;
                 case "saving":
-                    SaveStatusText.Foreground = Avalonia.Media.Brushes.Orange;
-                    Avalonia.Controls.ToolTip.SetTip(SaveStatusText, "Saving...");
+                    SaveStatusText.Text = "⏳ Saving...";
+                    SaveStatusText.Opacity = 0.7;
+                    Avalonia.Controls.ToolTip.SetTip(SaveStatusText, "Saving your progress...");
                     break;
                 case "error":
-                    SaveStatusText.Foreground = Avalonia.Media.Brushes.Red;
+                    SaveStatusText.Text = "❌ Error";
+                    SaveStatusText.Opacity = 1.0;
                     Avalonia.Controls.ToolTip.SetTip(SaveStatusText, "Error saving - check console");
                     break;
                 case "unsaved":
-                    SaveStatusText.Foreground = Avalonia.Media.Brushes.Yellow;
-                    Avalonia.Controls.ToolTip.SetTip(SaveStatusText, "Unsaved changes");
+                    SaveStatusText.Text = "📝 Unsaved";
+                    SaveStatusText.Opacity = 0.8;
+                    Avalonia.Controls.ToolTip.SetTip(SaveStatusText, "You have unsaved changes");
                     break;
             }
         });

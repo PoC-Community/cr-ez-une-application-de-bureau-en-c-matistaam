@@ -9,7 +9,7 @@
   {
     "Id": "task-002",
     "Title": "Test Task 2 - Completed",
-    "IsCompleted": true,
+    "IsCompleted": false,
     "Tags": "",
     "DueDate": null
   },
