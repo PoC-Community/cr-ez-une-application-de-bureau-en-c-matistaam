@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.Json;
@@ -22,6 +23,9 @@ public partial class MainWindow : Window
         AddButton.Click += OnAddClick;
         DeleteButton.Click += OnDeleteClick;
         SaveButton.Click += OnSaveClick;
+
+        // Load tasks on startup
+        LoadTasks();
     }
 
     private void OnAddClick(object? sender, RoutedEventArgs e)
@@ -65,6 +69,51 @@ public partial class MainWindow : Window
         {
             // Handle errors
             System.Console.WriteLine($"Error saving tasks: {ex.Message}");
+        }
+    }
+
+    private void LoadTasks()
+    {
+        try
+        {
+            // Check if the file exists
+            if (File.Exists(DataFile))
+            {
+                // Read the JSON file
+                var json = File.ReadAllText(DataFile);
+
+                // Deserialize the JSON into a list of TaskItem
+                var tasks = JsonSerializer.Deserialize<List<TaskItem>>(json);
+
+                // Clear existing tasks and add loaded tasks
+                _tasks.Clear();
+                if (tasks != null)
+                {
+                    foreach (var task in tasks)
+                    {
+                        _tasks.Add(task);
+                    }
+                }
+
+                System.Console.WriteLine("Tasks loaded successfully!");
+            }
+            else
+            {
+                // File doesn't exist, start with an empty list
+                System.Console.WriteLine("No saved tasks found. Starting with an empty list.");
+            }
+        }
+        catch (JsonException ex)
+        {
+            // Handle invalid JSON
+            System.Console.WriteLine($"Error parsing JSON file: {ex.Message}");
+            System.Console.WriteLine("Starting with an empty task list.");
+        }
+        catch (Exception ex)
+        {
+            // Handle other errors (permissions, etc.)
+            System.Console.WriteLine($"Error loading tasks: {ex.Message}");
+            System.Console.WriteLine("Starting with an empty task list.");
         }
     }
 }
