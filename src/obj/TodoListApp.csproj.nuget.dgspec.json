@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "/home/milok/C--workshop-template/src/TodoListApp.csproj": {}
+    "/home/matis/Delivery/02_3rd_year/00_5th_Semester/03_Workshops/cr-ez-une-application-de-bureau-en-c-matistaam/src/TodoListApp.csproj": {}
   },
   "projects": {
-    "/home/milok/C--workshop-template/src/TodoListApp.csproj": {
+    "/home/matis/Delivery/02_3rd_year/00_5th_Semester/03_Workshops/cr-ez-une-application-de-bureau-en-c-matistaam/src/TodoListApp.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/milok/C--workshop-template/src/TodoListApp.csproj",
+        "projectUniqueName": "/home/matis/Delivery/02_3rd_year/00_5th_Semester/03_Workshops/cr-ez-une-application-de-bureau-en-c-matistaam/src/TodoListApp.csproj",
         "projectName": "TodoListApp",
-        "projectPath": "/home/milok/C--workshop-template/src/TodoListApp.csproj",
-        "packagesPath": "/home/milok/.nuget/packages/",
-        "outputPath": "/home/milok/C--workshop-template/src/obj/",
+        "projectPath": "/home/matis/Delivery/02_3rd_year/00_5th_Semester/03_Workshops/cr-ez-une-application-de-bureau-en-c-matistaam/src/TodoListApp.csproj",
+        "packagesPath": "/home/matis/.nuget/packages/",
+        "outputPath": "/home/matis/Delivery/02_3rd_year/00_5th_Semester/03_Workshops/cr-ez-une-application-de-bureau-en-c-matistaam/src/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/home/milok/.nuget/NuGet/NuGet.Config"
+          "/home/matis/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net8.0"
@@ -32,13 +32,7 @@
           "warnAsError": [
             "NU1605"
           ]
-        },
-        "restoreAuditProperties": {
-          "enableAudit": "true",
-          "auditLevel": "low",
-          "auditMode": "direct"
-        },
-        "SdkAnalysisLevel": "9.0.100"
+        }
       },
       "frameworks": {
         "net8.0": {
@@ -76,22 +70,12 @@
           ],
           "assetTargetFallback": true,
           "warn": true,
-          "downloadDependencies": [
-            {
-              "name": "Microsoft.AspNetCore.App.Ref",
-              "version": "[8.0.20, 8.0.20]"
-            },
-            {
-              "name": "Microsoft.NETCore.App.Host.linux-x64",
-              "version": "[8.0.20, 8.0.20]"
-            }
-          ],
           "frameworkReferences": {
             "Microsoft.NETCore.App": {
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/9.0.110/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/8.0.121/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
