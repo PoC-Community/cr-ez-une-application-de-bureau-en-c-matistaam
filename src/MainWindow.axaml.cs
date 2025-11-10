@@ -32,6 +32,8 @@ public partial class MainWindow : Window
         FilterTodayButton.Click += OnFilterTodayClick;
         FilterWeekButton.Click += OnFilterWeekClick;
         FilterOverdueButton.Click += OnFilterOverdueClick;
+        CompleteAllButton.Click += OnCompleteAllClick;
+        ClearCompletedButton.Click += OnClearCompletedClick;
 
         // Load tasks on startup
         LoadTasks();
@@ -87,6 +89,105 @@ public partial class MainWindow : Window
     {
         _currentDateFilter = "overdue";
         ApplyFilter();
+    }
+
+    private void OnCompleteAllClick(object? sender, RoutedEventArgs e)
+    {
+        foreach (var task in _tasks)
+        {
+            task.IsCompleted = true;
+        }
+        // Refresh the view to show updated checkboxes
+        ApplyFilter();
+    }
+
+    private void OnClearCompletedClick(object? sender, RoutedEventArgs e)
+    {
+        // Remove all completed tasks
+        var completedTasks = _tasks.Where(t => t.IsCompleted).ToList();
+        foreach (var task in completedTasks)
+        {
+            _tasks.Remove(task);
+        }
+        ApplyFilter();
+    }
+
+    private void OnTaskTitleDoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
+    {
+        if (sender is TextBlock textBlock && textBlock.Parent is StackPanel panel)
+        {
+            // Find the TextBox in the same panel
+            var textBox = panel.Children.OfType<TextBox>().FirstOrDefault(tb => tb.Name == "TaskTitleEdit");
+            if (textBox != null)
+            {
+                textBlock.IsVisible = false;
+                textBox.IsVisible = true;
+                textBox.Focus();
+                textBox.SelectAll();
+            }
+        }
+    }
+
+    private void OnTaskTitleEditLostFocus(object? sender, RoutedEventArgs e)
+    {
+        FinishEditingTitle(sender);
+    }
+
+    private void OnTaskTitleEditKeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
+    {
+        if (e.Key == Avalonia.Input.Key.Enter)
+        {
+            FinishEditingTitle(sender);
+            e.Handled = true;
+        }
+        else if (e.Key == Avalonia.Input.Key.Escape)
+        {
+            CancelEditingTitle(sender);
+            e.Handled = true;
+        }
+    }
+
+    private void FinishEditingTitle(object? sender)
+    {
+        if (sender is TextBox textBox && textBox.Parent is StackPanel panel)
+        {
+            // Update the task title
+            if (textBox.DataContext is TaskItem task && !string.IsNullOrWhiteSpace(textBox.Text))
+            {
+                task.Title = textBox.Text;
+            }
+
+            // Switch back to TextBlock
+            var textBlock = panel.Children.OfType<TextBlock>().FirstOrDefault(tb => tb.Name == "TaskTitleText");
+            if (textBlock != null)
+            {
+                textBox.IsVisible = false;
+                textBlock.IsVisible = true;
+            }
+
+            // Refresh the view
+            ApplyFilter();
+        }
+    }
+
+    private void CancelEditingTitle(object? sender)
+    {
+        if (sender is TextBox textBox && textBox.Parent is StackPanel panel)
+        {
+            // Reset the text to original value
+            if (textBox.DataContext is TaskItem task)
+            {
+                textBox.Text = task.Title;
+            }
+
+            // Switch back to TextBlock without saving
+            var textBlock = panel.Children.OfType<TextBlock>().FirstOrDefault(tb => tb.Name == "TaskTitleText");
+            if (textBlock != null)
+            {
+                textBox.IsVisible = false;
+                textBlock.IsVisible = true;
+            }
+        }
     }
 
     private void ApplyFilter()
